@@ -120,11 +120,11 @@ export const TOUR = [
   },
   {
     title: 'The Belvedere',
-    text: 'One hundred and seventy-six steps above the transept, the bell tower looks across the roofs to the mountains and up to the dome.',
+    text: 'One hundred and seventy-six steps above the transept, the bell tower looks out to the mountains and down on the Tempietto at the edge of the garden.',
     speed: 0.8,
     keys: [
       { p: [-9.9, 41.66, -79.9], t: [-60, 36, -43.7], hold: 2 },
-      { p: [-12.55, 41.66, -80.67], t: [-53.3, 25.6, -124.7], hold: 2.5 },
+      { p: [-13.155, 41.66, -80.33], t: [-70.4, 19.8, -98.4], hold: 2.5 },
     ],
   },
   {
