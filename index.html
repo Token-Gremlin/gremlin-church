@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#1b1430" />
+    <title>Basilica of Celestial Light</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 4 L40 24 L32 60 L24 24 Z' fill='%23e8c36a'/%3E%3Ccircle cx='32' cy='22' r='6' fill='%23fff5d6'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <div id="loader" class="overlay">
+      <div class="loader-inner">
+        <div class="emblem" aria-hidden="true">
+          <svg viewBox="0 0 120 120">
+            <defs>
+              <radialGradient id="eg" cx="50%" cy="45%" r="60%">
+                <stop offset="0%" stop-color="#fff8e1" />
+                <stop offset="55%" stop-color="#e8c36a" />
+                <stop offset="100%" stop-color="#8a6420" />
+              </radialGradient>
+            </defs>
+            <g fill="none" stroke="url(#eg)" stroke-width="1.4">
+              <circle cx="60" cy="60" r="54" />
+              <circle cx="60" cy="60" r="46" opacity="0.7" />
+              <path d="M60 10 L66 52 L110 60 L66 68 L60 110 L54 68 L10 60 L54 52 Z" />
+              <path d="M60 26 L63 57 L94 60 L63 63 L60 94 L57 63 L26 60 L57 57 Z" opacity="0.8" />
+            </g>
+            <circle cx="60" cy="60" r="5" fill="url(#eg)" />
+          </svg>
+        </div>
+        <h1>Basilica <span>of</span> Celestial Light</h1>
+        <p class="subtitle">A cathedral raised entirely from code</p>
+        <div class="progress"><div class="bar" id="progress-bar"></div></div>
+        <p class="status" id="progress-status">Laying the foundations…</p>
+        <div class="enter" id="enter-buttons" hidden>
+          <button id="btn-walk" class="primary">Walk freely</button>
+          <button id="btn-tour">Guided tour</button>
+        </div>
+        <div class="quality-pick" id="quality-pick" hidden>
+          <span>Quality</span>
+          <button data-q="low">Low</button>
+          <button data-q="medium">Medium</button>
+          <button data-q="high">High</button>
+          <button data-q="ultra">Ultra</button>
+        </div>
+        <p class="hint" id="enter-hint" hidden>Headphones recommended · WASD to walk · Mouse to look · Shift to run</p>
+      </div>
+    </div>
+
+    <div id="hud" hidden>
+      <div id="crosshair"></div>
+      <div id="place-title"><div class="place-name"></div><div class="place-sub"></div></div>
+      <div id="caption"><div class="caption-title"></div><div class="caption-text"></div></div>
+      <div id="interact-hint"></div>
+      <div id="toolbar">
+        <button id="tb-tour" title="Guided tour (T)">Tour</button>
+        <button id="tb-fly" title="Toggle flight (F)">Fly</button>
+        <button id="tb-time" title="Change the hour (N)">Dusk</button>
+        <button id="tb-sound" title="Sound (M)">Sound</button>
+        <button id="tb-quality" title="Quality (Q)">High</button>
+        <button id="tb-help" title="Help (H)">?</button>
+      </div>
+      <div id="help" hidden>
+        <h3>Controls</h3>
+        <ul>
+          <li><b>Click</b> to look around with the mouse</li>
+          <li><b>W A S D</b> / arrows to walk, <b>Shift</b> to run</li>
+          <li><b>F</b> toggle flight · <b>Space / C</b> rise / descend while flying</li>
+          <li><b>E</b> interact (light candles, ring the bell)</li>
+          <li><b>T</b> guided tour · <b>N</b> change the hour · <b>M</b> sound</li>
+          <li><b>Q</b> cycle quality · <b>P</b> photo mode (hide interface)</li>
+          <li><b>Mouse wheel</b> zoom</li>
+        </ul>
+        <p>Secrets hide in the towers, beneath the choir, and behind the altar.</p>
+      </div>
+      <div id="tour-bar" hidden>
+        <button id="tour-prev" title="Previous stop">‹</button>
+        <span id="tour-progress"></span>
+        <button id="tour-next" title="Next stop">›</button>
+        <button id="tour-exit">Explore freely</button>
+      </div>
+      <div id="touch-stick" hidden><div class="knob"></div></div>
+      <div id="fps"></div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
