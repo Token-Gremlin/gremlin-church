@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { L } from '../layout.js';
 import {
   Parts, clusteredPier, colonnette, vaultShaft, rectOutline, notchOutline, archOpening, archivolt, gothicWindow,
-  archOffsetPoints, archTo3D, roll, PROFILES, pinnacle,
+  archOffsetPoints, archTo3D, roll, PROFILES, pinnacle, outlineWithNotches,
 } from '../../arch/components.js';
 import { ribVault } from '../../arch/vaults.js';
 import { xf, lathe, polyLathe } from '../../arch/geom.js';
@@ -115,9 +115,10 @@ export function buildNave(ctx) {
       const famin = Math.min(faA, faB), famax = Math.max(faA, faB), fca = (faA + faB) / 2;
       const door = s < 0 && (i === 1 || i === 5);
       const win = gothicWindow({ W: AISLE_WIN.W, H: AISLE_WIN.H, k: AISLE_WIN.k, lights: 2, ca: fca, y0: door ? 6.2 : AISLE_WIN.y0, b: 0, wallT: L.aisleWallT, splayW: 0.28 });
-      const holes = [win.hole];
-      if (door) holes.push(archOpening(fca, 0, 2.6, 0.7, 3.6, 14));
-      slab(ctx, aisleZone, fa, rectOutline(famin, famax, 0, L.aisleEave), holes, L.aisleWallT);
+      const outline = door
+        ? outlineWithNotches(famin, famax, 0, L.aisleEave, [{ ca: fca, span: 2.6, k: 0.7, spring: 3.6, segs: 14 }])
+        : rectOutline(famin, famax, 0, L.aisleEave);
+      slab(ctx, aisleZone, fa, outline, [win.hole], L.aisleWallT);
       const wp = new Parts();
       wp.merge(win.parts);
       if (door) {

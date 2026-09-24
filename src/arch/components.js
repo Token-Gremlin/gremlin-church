@@ -197,6 +197,22 @@ export function notchOutline(a0, a1, y0, y1, ca, span, k, segs = 18) {
   return pts;
 }
 
+/**
+ * Rectangular wall outline whose bottom edge is notched by arched doorways
+ * (openings that reach the floor cannot be holes, they must be part of the boundary).
+ * notches: [{ ca, span, k, spring, segs }]
+ */
+export function outlineWithNotches(a0, a1, y0, y1, notches, segsDefault = 16) {
+  const pts = [[a0, y0]];
+  for (const n of [...notches].sort((p, q) => p.ca - q.ca)) {
+    pts.push([n.ca - n.span / 2, y0]);
+    for (const p of archPoints(n.span, n.k, n.segs || segsDefault)) pts.push([n.ca + p.x, n.spring + p.y]);
+    pts.push([n.ca + n.span / 2, y0]);
+  }
+  pts.push([a1, y0], [a1, y1], [a0, y1]);
+  return pts;
+}
+
 /** Polygon of an arched opening with legs from y0 up to the springing. */
 export function archOpening(ca, y0, span, k, springY, segs = 18) {
   const pts = [[ca - span / 2, y0]];

@@ -68,7 +68,7 @@ export class Lighting {
     this.sun.target = this.sunTarget;
     this.inside = 1;
     this.night = 0;
-    this.interiorSunDir = new THREE.Vector3(-0.62, 0.72, 0.3).normalize();
+    this.interiorSunDir = new THREE.Vector3(-0.5, 0.83, 0.26).normalize();
     this._dir = new THREE.Vector3();
     this.envInterior = null;
     this.envExterior = null;
@@ -81,9 +81,9 @@ export class Lighting {
         fog: new THREE.Color(0.98, 0.64, 0.5), fogD: 0.0012, env: 0.5,
       },
       int: {
-        sunColor: new THREE.Color(1.0, 0.8, 0.58), sunI: 2.2,
-        sky: new THREE.Color(1.0, 0.9, 0.78), ground: new THREE.Color(0.62, 0.5, 0.4), hemiI: 0.55,
-        fog: new THREE.Color(1.0, 0.86, 0.66), fogD: 0.0042, env: 1.0,
+        sunColor: new THREE.Color(1.0, 0.82, 0.6), sunI: 4.5,
+        sky: new THREE.Color(1.0, 0.88, 0.72), ground: new THREE.Color(0.62, 0.5, 0.4), hemiI: 0.75,
+        fog: new THREE.Color(1.0, 0.86, 0.66), fogD: 0.0042, env: 0.92,
       },
       nightExt: {
         sunColor: new THREE.Color(0.45, 0.55, 0.9), sunI: 0.55,

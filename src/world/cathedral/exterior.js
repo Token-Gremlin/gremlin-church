@@ -546,4 +546,45 @@ function buildTower(ctx, s, towerZ1) {
   t.toBatcher(ctx.B, zone);
 }
 
+/** Outer faces of the basilica for walking around it outside. */
+export function exteriorCollision(ctx) {
+  const c = ctx.col;
+  const A = L.aisleWallC + L.aisleWallT / 2; // 15.9
+  const fz = L.westT;
+  // façade with portal gaps
+  const gaps = [[-PORTAL.sideX - 1.4, -PORTAL.sideX + 1.4], [-2.8, 2.8], [PORTAL.sideX - 1.4, PORTAL.sideX + 1.4]];
+  let cur = -A - 0.5;
+  for (const [a, b] of gaps) {
+    c.wall(cur, fz, a, fz, -5, 60);
+    cur = b;
+  }
+  c.wall(cur, fz, A + 0.5, fz, -5, 60);
+  // south aisle, transepts, choir (the north aisle side is handled by the loggia)
+  c.wall(A, fz, A, L.crossZ0 + 0.6, -5, 60);
+  for (let i = 1; i <= L.naveBays; i++) c.box(A, -i * L.bay - 0.7, A + 2.7, -i * L.bay + 0.7, -5, 30);
+  for (const s of [-1, 1]) {
+    const xe = s * (L.transEnd + 0.8);
+    c.wall(s * A, L.crossZ0 + 0.6, xe, L.crossZ0 + 0.6, -5, 60);
+    if (s < 0) {
+      c.wall(xe, L.crossZ0 + 0.6, xe, CROSS.cz + 1.8, -5, 60);
+      c.wall(xe, CROSS.cz - 1.8, xe, L.crossZ1 - 0.6, -5, 60);
+    } else c.wall(xe, L.crossZ0 + 0.6, xe, L.crossZ1 - 0.6, -5, 60);
+    c.wall(xe, L.crossZ1 - 0.6, s * OUT, L.crossZ1 - 0.6, -5, 60);
+    c.wall(s * OUT, L.crossZ1 - 0.6, s * OUT, APSE.cz, -5, 60);
+    for (let i = 1; i < L.choirBays; i++) c.box(Math.min(s * OUT, s * (OUT + 2.4)), L.crossZ1 - i * L.bay - 0.65, Math.max(s * OUT, s * (OUT + 2.4)), L.crossZ1 - i * L.bay + 0.65, -5, 40);
+    for (const zz of [L.crossZ0 + 0.1, L.crossZ1 - 0.1]) c.circle(s * (L.transEnd + 0.9), zz + (zz > CROSS.cz ? 0.9 : -0.9), 1.4, -5, 60);
+  }
+  const vs = apseVertices(OUT);
+  for (let i = 0; i < vs.length - 1; i++) c.wall(vs[i].x, vs[i].z, vs[i + 1].x, vs[i + 1].z, -5, 60);
+  for (let i = 1; i < vs.length - 1; i++) {
+    const v = vs[i];
+    const d = new THREE.Vector2(v.x, v.z - APSE.cz).normalize();
+    c.circle(v.x + d.x * 1.4, v.z + d.y * 1.4, 1.2, -5, 40);
+  }
+  // porch and flanking buttresses on the façade
+  c.box(-6, fz, -4.3, fz + 1.6, -5, 20);
+  c.box(4.3, fz, 6, fz + 1.6, -5, 20);
+  for (const s of [-1, 1]) c.box(s * (OUT + 0.5) - 0.75, fz, s * (OUT + 0.5) + 0.75, fz + 2.2, -5, 40);
+}
+
 export { RIDGE, OUT };

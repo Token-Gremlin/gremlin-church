@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { L } from '../layout.js';
-import { Parts, colonnette, rectOutline, archOpening, archivolt, gothicWindow, PROFILES, pinnacle, roseWindow } from '../../arch/components.js';
+import { Parts, colonnette, rectOutline, archOpening, archivolt, gothicWindow, PROFILES, pinnacle, roseWindow, outlineWithNotches } from '../../arch/components.js';
 import { xf, cyl, lathe, polyLathe, archRise, TAU } from '../../arch/geom.js';
 import { WallFrame, slab, hMould, lbox, lBalustrade, addGlass } from './common.js';
 import { WEST_WIN } from '../glassDesigns.js';
@@ -15,8 +15,8 @@ export function buildWest(ctx) {
   const f = new WallFrame(new THREE.Vector3(0, 0, T / 2), new THREE.Vector3(0, 0, -1));
   const p = new Parts();
   const holes = [];
-  holes.push(archOpening(0, 0, PORTAL.span, PORTAL.k, PORTAL.spring, 22));
-  for (const s of [-1, 1]) holes.push(archOpening(s * PORTAL.sideX, 0, PORTAL.sideSpan, 0.72, PORTAL.sideSpring, 16));
+  const notches = [{ ca: 0, span: PORTAL.span, k: PORTAL.k, spring: PORTAL.spring, segs: 22 }];
+  for (const s of [-1, 1]) notches.push({ ca: s * PORTAL.sideX, span: PORTAL.sideSpan, k: 0.72, spring: PORTAL.sideSpring, segs: 16 });
   const ww = gothicWindow({ W: WEST_WIN.W, H: WEST_WIN.H, k: WEST_WIN.k, lights: 4, ca: 0, y0: WEST_WIN.y0, b: -T / 2 + 0.6, wallT: 1.2, splayW: 0.4, exteriorSplay: true });
   holes.push(ww.hole);
   p.merge(ww.parts);
@@ -27,7 +27,7 @@ export function buildWest(ctx) {
     p.merge(w.parts);
     aisleWins.push(w);
   }
-  slab(ctx, zone, f, rectOutline(-L.aisleWallC - L.aisleWallT / 2, L.aisleWallC + L.aisleWallT / 2, 0, L.eave), holes, T);
+  slab(ctx, zone, f, outlineWithNotches(-L.aisleWallC - L.aisleWallT / 2, L.aisleWallC + L.aisleWallT / 2, 0, L.eave, notches), holes, T);
   // interior splay for the deep window openings (the tracery sits near the exterior face)
   addGlass(ctx, 'west', f, ww, { ca: 0, y0: WEST_WIN.y0, kind: 'west' });
   aisleWins.forEach((w, i) => addGlass(ctx, `aisle-${i + 1}`, f, w, { ca: (i ? 1 : -1) * PORTAL.sideX, y0: WEST_AISLE_WIN.y0, kind: 'aisle' }));

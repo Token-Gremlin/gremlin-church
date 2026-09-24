@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { L } from '../layout.js';
 import {
   Parts, clusteredPier, colonnette, rectOutline, notchOutline, archOpening, archivolt, gothicWindow, roseWindow,
-  archOffsetPoints, archTo3D, roll, PROFILES, mouldingAlong,
+  archOffsetPoints, archTo3D, roll, PROFILES, mouldingAlong, outlineWithNotches,
 } from '../../arch/components.js';
 import { ribVault, kForRise } from '../../arch/vaults.js';
 import { xf, lathe, sweep, TAU, archY } from '../../arch/geom.js';
@@ -193,15 +193,16 @@ export function buildTransepts(ctx) {
           lowerDone = true;
         }
         if (!lowerDone) {
-          const doorKind = (!isWest && j === 0) ? (s < 0 ? 'crypt' : 'tower') : (!isWest && j === 1 && s > 0) ? 'chapel' : (isWest && j === 1 && s < 0) ? 'loggia' : null;
+          const doorKind = (!isWest && j === 0 && s < 0) ? 'tower' : (!isWest && j === 1 && s > 0) ? 'chapel' : (isWest && j === 1 && s < 0) ? 'loggia' : null;
           const holes = [];
+          const notches = [];
           let win = null;
           if (doorKind === 'chapel') {
-            holes.push(archOpening(ca, 0, 5.0, 0.72, 6.2, 18));
+            notches.push({ ca, span: 5.0, k: 0.72, spring: 6.2, segs: 18 });
             archivolt(p, ca, 6.2, 5.0, 0.72, L.wallT / 2, { rolls: [0.12], rollR: 0.07 });
             archivolt(p, ca, 6.2, 5.0, 0.72, -L.wallT / 2, { dir: -1, rolls: [0.12], rollR: 0.07 });
           } else if (doorKind) {
-            holes.push(archOpening(ca, 0, 2.4, 0.72, 3.4, 14));
+            notches.push({ ca, span: 2.4, k: 0.72, spring: 3.4, segs: 14 });
             archivolt(p, ca, 3.4, 2.4, 0.72, L.wallT / 2, { rolls: [0.1], rollR: 0.05 });
             archivolt(p, ca, 3.4, 2.4, 0.72, -L.wallT / 2, { dir: -1, rolls: [0.1], rollR: 0.05 });
           }
@@ -210,7 +211,7 @@ export function buildTransepts(ctx) {
             holes.push(win.hole);
             p.merge(win.parts);
           }
-          slab(ctx, zone, f, rectOutline(amin, amax, 0, L.triY0), holes, L.wallT);
+          slab(ctx, zone, f, outlineWithNotches(amin, amax, 0, L.triY0, notches), holes, L.wallT);
           if (win) addGlass(ctx, `aisle-${(j + (isWest ? 1 : 3) + (s > 0 ? 1 : 0)) % 4}`, f, win, { ca, y0: doorKind ? 5.8 : AISLE_WIN.y0, kind: 'aisle' });
           hMould(p, amin, amax, 3.0, L.wallT / 2, PROFILES.string);
           // collision along the wall face with door gaps
@@ -266,8 +267,8 @@ export function buildTransepts(ctx) {
       lancets.push({ win, ca });
     }
     const portal = s < 0;
-    if (portal) holes.push(archOpening(0, 0, 3.6, 0.72, 5.2, 18));
-    slab(ctx, s < 0 ? 'transN' : 'transS', fN, rectOutline(-8.3, 8.3, 0, L.eave), holes, t);
+    const endOutline = outlineWithNotches(-8.3, 8.3, 0, L.eave, portal ? [{ ca: 0, span: 3.6, k: 0.72, spring: 5.2, segs: 18 }] : []);
+    slab(ctx, s < 0 ? 'transN' : 'transS', fN, endOutline, holes, t);
     const rose = roseWindow({ R: roseR, petals: 12, ca: 0, cy: roseY, b: 0 });
     p.merge(rose.parts);
     const rg = rose.glass.clone().applyMatrix4(fN.m);

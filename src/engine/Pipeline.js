@@ -216,7 +216,7 @@ export class Pipeline {
       bloomKnee: 0.8,
       bloomLevels: 6,
       rays: 0,
-      exposure: 1.0,
+      exposure: 0.92,
       saturation: 1.08,
       contrast: 1.07,
       lift: new THREE.Vector3(0.008, 0.007, 0.012),

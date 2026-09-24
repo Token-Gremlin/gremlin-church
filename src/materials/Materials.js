@@ -292,6 +292,36 @@ export function glassMaterial(texture, { intensity = 3.2, extIntensity = 0.9, su
   return mat;
 }
 
+/** Replace UV mapping with world-space triplanar sampling of a colour texture. */
+export function triplanarMapped(mat, tex, scale = 1) {
+  const id = `tri-${cacheId++}`;
+  mat.userData.uniforms = { uTri: { value: tex }, uTriScale: { value: scale } };
+  mat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, mat.userData.uniforms);
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>\n${WORLD_VARYINGS_VERT}`)
+      .replace('#include <worldpos_vertex>', `#include <worldpos_vertex>\n${WORLD_POS_VERT}`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNrm;\nuniform sampler2D uTri;\nuniform float uTriScale;')
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+        {
+          vec3 n = normalize(vWNrm);
+          vec3 w = pow(abs(n), vec3(6.0));
+          w /= (w.x + w.y + w.z);
+          vec3 p = vWPos * uTriScale;
+          vec4 tx = texture2D(uTri, vec2(p.z * 3.0, p.y * 0.35));
+          vec4 ty = texture2D(uTri, vec2(p.z * 3.0, p.x * 0.35));
+          vec4 tz = texture2D(uTri, vec2(p.y * 3.0, p.x * 0.35));
+          diffuseColor *= tx * w.x + ty * w.y + tz * w.z;
+        }`,
+      );
+  };
+  mat.customProgramCacheKey = () => id;
+  return mat;
+}
+
 /** Leafy foliage: world-space noise drives albedo variation and a bump-mapped normal. */
 export function foliageMaterial(color, freq = 3) {
   const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0 });
@@ -369,8 +399,7 @@ export function createMaterials() {
   M.vault = vaultMaterial(detail);
 
   const wood = woodTexture(3);
-  wood.repeat.set(1, 1);
-  M.wood = new THREE.MeshStandardMaterial({ map: wood, color: 0xffffff, roughness: 0.42, metalness: 0 });
+  M.wood = triplanarMapped(new THREE.MeshStandardMaterial({ color: new THREE.Color(1.25, 1.1, 1.0), roughness: 0.38, metalness: 0 }), wood, 0.7);
   M.velvet = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.06, 0.1, 0.35), roughness: 0.8 });
   M.velvetRed = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.35, 0.03, 0.05), roughness: 0.8 });
   M.linen = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.95, 0.93, 0.88), roughness: 0.85 });

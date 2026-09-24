@@ -72,6 +72,7 @@ class App {
     });
     this.world.lighting.setShadowSize(this.quality.shadow);
     this.resize();
+    this.world.captureInterior();
     const pos = (params.get('pos') || '0,0,-4').split(',').map(Number);
     const look = (params.get('look') || '0,0').split(',').map(Number);
     this.player.place(pos[0], pos[1], pos[2], THREE.MathUtils.degToRad(look[0]), THREE.MathUtils.degToRad(look[1]));
@@ -117,6 +118,8 @@ class App {
     const inside = this.inside;
     w.lighting.update(cam, inside, 0);
     w.scene.environment = inside > 0.5 ? w.lighting.envInterior : w.lighting.envExterior;
+    w.shafts?.setMaster(Math.max(0, inside * 1.2 - 0.2));
+    if (w.dust) w.dust.visible = inside > 0.2;
     w.update(dt, this.time, cam);
     // Render the one planar reflection that matters for where we stand.
     const reflOn = this.quality.reflections && this.frames > 1;
