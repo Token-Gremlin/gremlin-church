@@ -120,12 +120,25 @@ export class Collision {
     }
   }
 
+  /** Cut a hole through floors whose height lies in [yMin, yMax] (stairwells). */
+  hole(x0, z0, x1, z1, yMin = -0.1, yMax = 0.1) {
+    (this.holes ||= []).push({ x0: Math.min(x0, x1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), z1: Math.max(z0, z1), yMin, yMax });
+  }
+
+  _inHole(x, z, y) {
+    if (!this.holes) return false;
+    for (const h of this.holes) {
+      if (x >= h.x0 && x <= h.x1 && z >= h.z0 && z <= h.z1 && y >= h.yMin && y <= h.yMax) return true;
+    }
+    return false;
+  }
+
   /** Highest walkable height at (x,z) not above yRef + stepUp. */
   groundAt(x, z, yRef, stepUp = 0.55) {
     let best = -Infinity;
     for (const f of this.floors) {
       const y = this._floorHeight(f, x, z, yRef);
-      if (y !== null && y <= yRef + stepUp && y > best) best = y;
+      if (y !== null && y <= yRef + stepUp && y > best && !(f.t !== 1 && f.t !== 4 && this._inHole(x, z, y))) best = y;
     }
     return best;
   }

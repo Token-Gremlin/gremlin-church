@@ -78,7 +78,7 @@ void main() {
     vec2 wind = vec2(uTime * 0.0045, uTime * 0.0016);
     vec2 p = uv * 0.85 + wind;
     float n = cloudField(p);
-    float cov = smoothstep(uCover, uCover + 0.3, n);
+    float cov = smoothstep(uCover, uCover + 0.2, n);
     vec3 lightDir = normalize(mix(uSunDir, uMoonDir, uNight));
     vec2 sdir = normalize(lightDir.xz + 1e-4) * 0.07;
     float n2 = cloudField(p + sdir);
@@ -105,15 +105,15 @@ void main() {
 }`;
 
 const DUSK = {
-  zenith: new THREE.Color(0.105, 0.15, 0.40),
-  mid: new THREE.Color(0.62, 0.42, 0.62),
-  horizon: new THREE.Color(1.55, 0.86, 0.50),
-  belt: new THREE.Color(0.78, 0.46, 0.66),
-  sunGlow: new THREE.Color(1.9, 1.02, 0.46),
-  cloudLit: new THREE.Color(1.75, 1.05, 0.72),
-  cloudShadow: new THREE.Color(0.42, 0.33, 0.52),
+  zenith: new THREE.Color(0.11, 0.2, 0.5),
+  mid: new THREE.Color(0.66, 0.5, 0.58),
+  horizon: new THREE.Color(1.6, 0.92, 0.5),
+  belt: new THREE.Color(0.82, 0.52, 0.6),
+  sunGlow: new THREE.Color(2.0, 1.1, 0.48),
+  cloudLit: new THREE.Color(2.0, 1.12, 0.62),
+  cloudShadow: new THREE.Color(0.44, 0.34, 0.46),
   ground: new THREE.Color(0.16, 0.13, 0.11),
-  cover: 0.5,
+  cover: 0.44,
 };
 
 const NIGHT = {
@@ -130,7 +130,7 @@ const NIGHT = {
 
 export class Sky {
   constructor() {
-    this.sunDir = new THREE.Vector3(-0.9, 0.16, 0.26).normalize();
+    this.sunDir = new THREE.Vector3(-0.8, 0.15, 0.58).normalize();
     this.moonDir = new THREE.Vector3(0.45, 0.42, -0.78).normalize();
     this.uniforms = {
       uSunDir: { value: this.sunDir },

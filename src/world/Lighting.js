@@ -76,9 +76,9 @@ export class Lighting {
     scene.fog = this.fog;
     this.params = {
       ext: {
-        sunColor: new THREE.Color(1.0, 0.68, 0.42), sunI: 4.2,
-        sky: new THREE.Color(0.55, 0.55, 0.82), ground: new THREE.Color(0.42, 0.3, 0.24), hemiI: 0.9,
-        fog: new THREE.Color(0.95, 0.66, 0.55), fogD: 0.0011, env: 0.85,
+        sunColor: new THREE.Color(1.0, 0.7, 0.4), sunI: 6.0,
+        sky: new THREE.Color(0.48, 0.5, 0.82), ground: new THREE.Color(0.36, 0.26, 0.2), hemiI: 0.42,
+        fog: new THREE.Color(0.98, 0.64, 0.5), fogD: 0.0012, env: 0.5,
       },
       int: {
         sunColor: new THREE.Color(1.0, 0.8, 0.58), sunI: 2.2,

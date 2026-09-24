@@ -292,6 +292,40 @@ export function glassMaterial(texture, { intensity = 3.2, extIntensity = 0.9, su
   return mat;
 }
 
+/** Leafy foliage: world-space noise drives albedo variation and a bump-mapped normal. */
+export function foliageMaterial(color, freq = 3) {
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0 });
+  const id = `foliage-${cacheId++}`;
+  mat.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>\n${WORLD_VARYINGS_VERT}`)
+      .replace('#include <worldpos_vertex>', `#include <worldpos_vertex>\n${WORLD_POS_VERT}`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNrm;\n${NOISE_GLSL}\nfloat leafH(vec3 p) { vec3 q = p * ${freq.toFixed(2)}; float c = vnoise3(q * 0.6) * 0.6 + vnoise3(q * 1.7 + 3.1) * 0.3; vec2 v = voronoi(q.xz * 1.3 + q.y * 0.7); return c * 0.7 + (1.0 - smoothstep(0.0, 0.6, v.x)) * 0.45; }`)
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+        float lh = leafH(vWPos);
+        diffuseColor.rgb *= 0.5 + 0.85 * lh;
+        diffuseColor.rgb += vec3(0.025, 0.035, 0.0) * smoothstep(0.6, 0.95, lh);`,
+      )
+      .replace(
+        '#include <normal_fragment_maps>',
+        `#include <normal_fragment_maps>
+        {
+          vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition);
+          float hx = dFdx(lh), hy = dFdy(lh);
+          vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx);
+          float det = dot(dpx, r1);
+          vec3 grad = sign(det) * (hx * r1 + hy * r2);
+          normal = normalize(abs(det) * normal - grad * 0.9);
+        }`,
+      );
+  };
+  mat.customProgramCacheKey = () => id;
+  return mat;
+}
+
 export function createMaterials() {
   const detail = marbleDetailTexture(512, 7);
   const M = { detail };
@@ -311,7 +345,25 @@ export function createMaterials() {
   M.lanternGlow = new THREE.MeshBasicMaterial({ color: new THREE.Color(7, 6, 4.4), side: THREE.DoubleSide });
   M.lanternGlow.userData.castShadow = false;
   M.iron = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.08, 0.075, 0.07), roughness: 0.5, metalness: 0.8 });
-  M.slate = withDetail(new THREE.MeshStandardMaterial({ color: new THREE.Color(0.2, 0.25, 0.36), roughness: 0.5, metalness: 0.2 }), detail, { scale: 0.4, amount: 0.12 });
+  M.slate = withDetail(new THREE.MeshStandardMaterial({ color: new THREE.Color(0.16, 0.2, 0.3), roughness: 0.45, metalness: 0.25 }), detail, {
+    scale: 0.4,
+    amount: 0.12,
+    extraFrag: `
+      {
+        // overlapping slate courses
+        vec2 sp = vec2(vWPos.x + vWPos.z, vWPos.y) * vec2(2.2, 3.6);
+        float row = floor(sp.y);
+        float cx = fract(sp.x + mod(row, 2.0) * 0.5);
+        float cy = fract(sp.y);
+        float edge = smoothstep(0.0, 0.08, cy) * smoothstep(0.0, 0.05, cx) * smoothstep(1.0, 0.95, cx);
+        float tint = hash12(vec2(floor(sp.x + mod(row, 2.0) * 0.5), row));
+        diffuseColor.rgb *= mix(0.55, 1.0, edge) * (0.85 + 0.3 * tint);
+      }`,
+  });
+  M.slate.onBeforeCompile = ((orig) => (shader) => {
+    orig(shader);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>\n${'float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }'}`);
+  })(M.slate.onBeforeCompile);
   M.domeBlue = withDetail(new THREE.MeshStandardMaterial({ color: new THREE.Color(0.2, 0.35, 0.62), roughness: 0.28, metalness: 0.65 }), detail, { scale: 0.3, amount: 0.08, rough: 0.3 });
   M.dark = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.02, 0.018, 0.02), roughness: 0.9 });
   M.vault = vaultMaterial(detail);
@@ -331,7 +383,7 @@ export function createMaterials() {
 
   const mosaic = goldMosaicTexture(5);
   mosaic.repeat.set(1, 1);
-  M.goldMosaic = new THREE.MeshStandardMaterial({ map: mosaic, color: 0xffffff, roughness: 0.3, metalness: 0.85, emissive: new THREE.Color(0.25, 0.16, 0.05), emissiveMap: mosaic });
+  M.goldMosaic = new THREE.MeshStandardMaterial({ map: mosaic, color: 0xffffff, roughness: 0.34, metalness: 0.6, emissive: new THREE.Color(0.09, 0.07, 0.04), emissiveMap: mosaic });
 
   const dome = domeTexture(11);
   M.domePaint = new THREE.MeshStandardMaterial({ map: dome, roughness: 0.5, metalness: 0.2, emissive: new THREE.Color(0.35, 0.3, 0.25), emissiveMap: dome, side: THREE.BackSide });
@@ -344,9 +396,13 @@ export function createMaterials() {
   M.bulb.userData.castShadow = false;
   M.glowWarm = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 2.2, 1.1) });
   M.glowWarm.userData.castShadow = false;
+  M.lampGlass = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.5, 1.0, 0.5), side: THREE.DoubleSide });
+  M.lampGlass.userData.castShadow = false;
+  M.votiveGlass = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 0.35, 0.12) });
+  M.votiveGlass.userData.castShadow = false;
   M.wax = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.95, 0.9, 0.78), roughness: 0.5, emissive: new THREE.Color(0.25, 0.16, 0.06) });
-  M.foliage = withDetail(new THREE.MeshStandardMaterial({ color: new THREE.Color(0.09, 0.2, 0.07), roughness: 0.85 }), detail, { scale: 2.5, amount: 0.25 });
-  M.foliageDark = withDetail(new THREE.MeshStandardMaterial({ color: new THREE.Color(0.035, 0.09, 0.035), roughness: 0.9 }), detail, { scale: 1.6, amount: 0.3 });
+  M.foliage = foliageMaterial(new THREE.Color(0.1, 0.21, 0.07), 3.2);
+  M.foliageDark = foliageMaterial(new THREE.Color(0.04, 0.1, 0.04), 4.0);
   M.flowerWhite = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.95, 0.93, 0.88), roughness: 0.7, emissive: new THREE.Color(0.08, 0.07, 0.05) });
   M.flowerMix = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
   M.grass = withDetail(new THREE.MeshStandardMaterial({ color: new THREE.Color(0.12, 0.24, 0.07), roughness: 0.95 }), detail, { scale: 0.8, amount: 0.3 });

@@ -94,9 +94,9 @@ export function woodTexture(seed = 3) {
       const f = fine(x, (y * 0.1) % size);
       const k = 0.55 + 0.25 * ring + 0.2 * f;
       const i = (y * size + x) * 4;
-      img.data[i] = 92 * k + 18;
-      img.data[i + 1] = 46 * k + 10;
-      img.data[i + 2] = 26 * k + 6;
+      img.data[i] = 78 * k + 22;
+      img.data[i + 1] = 47 * k + 14;
+      img.data[i + 2] = 26 * k + 8;
       img.data[i + 3] = 255;
     }
   }
@@ -161,17 +161,34 @@ export function goldMosaicTexture(seed = 5) {
   const size = 512;
   const [c, ctx] = canvas(size, size);
   const r = rng(seed);
-  ctx.fillStyle = '#6a4a18';
+  ctx.fillStyle = '#7a6440';
   ctx.fillRect(0, 0, size, size);
-  const s = 8;
+  const s = 6;
   for (let y = 0; y < size; y += s) {
     const off = (y / s) % 2 ? s / 2 : 0;
     for (let x = -s; x < size; x += s) {
-      const k = 0.75 + r() * 0.35;
-      ctx.fillStyle = `rgb(${Math.min(255, 235 * k)},${Math.min(255, 180 * k)},${Math.min(255, 80 * k)})`;
-      ctx.fillRect(x + off + 0.6, y + 0.6, s - 1.2, s - 1.2);
+      const k = 0.78 + r() * 0.3;
+      ctx.fillStyle = `rgb(${Math.min(255, 232 * k)},${Math.min(255, 196 * k)},${Math.min(255, 118 * k)})`;
+      ctx.fillRect(x + off + 0.5, y + 0.5, s - 1, s - 1);
     }
   }
+  // deep blue border and a star medallion so each panel reads as a composition
+  ctx.strokeStyle = '#142a78';
+  ctx.lineWidth = 26;
+  ctx.strokeRect(13, 13, size - 26, size - 26);
+  ctx.strokeStyle = '#d8b060';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(30, 30, size - 60, size - 60);
+  ctx.fillStyle = '#142a78';
+  drawStar(ctx, size / 2, size / 2, 120, 50, 8);
+  ctx.fill();
+  ctx.fillStyle = '#f2d890';
+  drawStar(ctx, size / 2, size / 2, 70, 28, 8, -Math.PI / 2 + Math.PI / 8);
+  ctx.fill();
+  ctx.fillStyle = '#b82020';
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, 16, 0, TAU);
+  ctx.fill();
   return finishCanvas(c, { repeat: true });
 }
 

@@ -5,6 +5,8 @@ import { World } from './world/World.js';
 import { LAYER_FLOOR, LAYER_NO_REFLECT } from './engine/PlanarReflection.js';
 
 const params = new URLSearchParams(location.search);
+const L_WEST = 3.2;
+const SITE_Z = 30;
 const SHOT = params.has('shot');
 
 const QUALITY = {
@@ -88,6 +90,20 @@ class App {
     }
   }
 
+  /** 1 deep inside the basilica, 0 outside, smooth through the portals. */
+  insideTarget(p) {
+    if (p.y > 37 || p.y < -8) return p.y < -8 ? 1 : 0;
+    const x = Math.abs(p.x), z = p.z;
+    if (z <= 0 && z >= -60 && x < 14.5) return 1;
+    if (z < -60 && z >= -75 && x < 30) return 1;
+    if (z < -75 && z > -106 && x < 7.2) return 1;
+    if (z > 0 && z < L_WEST + 0.5) {
+      const inPortal = x < 2.8 || (x > 9.9 && x < 12.7);
+      if (inPortal) return 1 - z / (L_WEST + 0.5);
+    }
+    return 0;
+  }
+
   frame() {
     this.timer.update();
     const dt = Math.min(0.05, this.timer.getDelta());
@@ -96,15 +112,21 @@ class App {
     const cam = this.camera;
     cam.updateMatrixWorld();
     const w = this.world;
-    const inside = 1;
+    const target = this.insideTarget(cam.position);
+    this.inside = this.inside === undefined || SHOT ? target : this.inside + (target - this.inside) * (1 - Math.exp(-dt * 4));
+    const inside = this.inside;
     w.lighting.update(cam, inside, 0);
+    w.scene.environment = inside > 0.5 ? w.lighting.envInterior : w.lighting.envExterior;
     w.update(dt, this.time, cam);
-    const refl = w.reflections.interior;
+    // Render the one planar reflection that matters for where we stand.
     const reflOn = this.quality.reflections && this.frames > 1;
-    for (const fm of w.floorMats) fm.userData.uniforms.uReflActive.value = reflOn ? 1 : 0;
-    if (reflOn) refl.update(this.renderer, w.scene, cam);
+    const active = cam.position.y > 0.3 && cam.position.z < SITE_Z ? w.reflections.interior : w.reflections.exterior;
+    for (const fm of w.floorMats) fm.userData.uniforms.uReflActive.value = reflOn && w.floorReflector.get(fm) === active ? 1 : 0;
+    if (reflOn) active.update(this.renderer, w.scene, cam);
     const sp = w.sky.sunDir.clone().multiplyScalar(1000).add(cam.position).project(cam);
     this.pipeline.sunUV.set(sp.x * 0.5 + 0.5, sp.y * 0.5 + 0.5);
+    const sunInView = sp.z < 1 && Math.abs(sp.x) < 1.6 && Math.abs(sp.y) < 1.6 ? 1 : 0;
+    this.pipeline.params.rays = (1 - inside) * 0.55 * sunInView;
     this.pipeline.render(w.scene, cam, this.time);
     this.frames++;
     if (SHOT && this.frames === (+params.get('frames') || 4)) {
