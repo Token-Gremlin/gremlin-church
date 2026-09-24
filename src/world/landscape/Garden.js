@@ -119,7 +119,9 @@ export function buildGarden(ctx, world) {
     w.position.set(F.x, y, F.z);
     world.scene.add(w);
   }
-  const fallMat = world.waterfallMaterial;
+  // thin, seamless curtains; time, light and fog uniforms stay shared with the cliff falls
+  const fallMat = world.waterfallMaterial.clone();
+  fallMat.uniforms = { ...world.waterfallMaterial.uniforms, uAlpha: { value: 0.45 }, uWrap: { value: 1 } };
   for (const [rad, yTop, yBot] of [[2.95, 2.45, 0.62], [1.72, 4.2, 2.42], [0.84, 5.52, 4.18]]) {
     const g = new THREE.CylinderGeometry(rad + 0.05, rad + 0.35, yTop - yBot, 64, 6, true);
     const uv = g.attributes.uv;

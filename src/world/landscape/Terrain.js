@@ -317,6 +317,8 @@ ${NOISE_GLSL}
 uniform float uTime;
 uniform vec3 uTint;
 uniform vec3 uLight;
+uniform float uAlpha; // density of the sheet
+uniform float uWrap;  // 1 for closed curtains wrapped around a cylinder: seamless, no side fade
 varying vec2 vUv;
 varying vec3 vWPos;
 #include <fog_pars_fragment>
@@ -324,13 +326,20 @@ void main() {
   float x = vUv.x;
   float y = vUv.y;
   float speed = 0.55;
-  float s1 = fbm(vec2(x * 18.0, y * 2.2 + uTime * speed * 2.2));
-  float s2 = fbm(vec2(x * 42.0 + 3.0, y * 5.0 + uTime * speed * 3.4));
+  float s1, s2;
+  if (uWrap > 0.5) {
+    vec2 c = vec2(cos(x * 6.2831853), sin(x * 6.2831853));
+    s1 = vnoise3(vec3(c * 2.9, y * 2.2 + uTime * speed * 2.2)) * 0.65 + vnoise3(vec3(c * 5.8, y * 4.4 + uTime * speed * 3.0)) * 0.35;
+    s2 = vnoise3(vec3(c * 6.7 + 3.0, y * 5.0 + uTime * speed * 3.4));
+  } else {
+    s1 = fbm(vec2(x * 18.0, y * 2.2 + uTime * speed * 2.2));
+    s2 = fbm(vec2(x * 42.0 + 3.0, y * 5.0 + uTime * speed * 3.4));
+  }
   float streak = smoothstep(0.35, 0.8, s1 * 0.6 + s2 * 0.55);
-  float edge = smoothstep(0.0, 0.12, x) * smoothstep(1.0, 0.88, x);
+  float edge = mix(smoothstep(0.0, 0.12, x) * smoothstep(1.0, 0.88, x), 1.0, uWrap);
   float foamTop = smoothstep(0.08, 0.0, y);
   float foamBottom = smoothstep(0.82, 1.0, y);
-  float a = edge * (0.45 + 0.55 * streak) + foamBottom * 0.6;
+  float a = edge * (0.45 + 0.55 * streak) * uAlpha + foamBottom * 0.6;
   a *= smoothstep(0.0, 0.02, y);
   vec3 col = mix(uTint * 0.55, uLight, streak * 0.8 + foamBottom * 0.6 + foamTop * 0.5);
   gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
@@ -338,7 +347,7 @@ void main() {
 }`;
 
 function buildWaterfalls(ctx, world, group) {
-  const u = { uTime: { value: 0 }, uTint: { value: new THREE.Color(0.55, 0.62, 0.7) }, uLight: { value: new THREE.Color(1.6, 1.35, 1.2) } };
+  const u = { uTime: { value: 0 }, uTint: { value: new THREE.Color(0.55, 0.62, 0.7) }, uLight: { value: new THREE.Color(1.6, 1.35, 1.2) }, uAlpha: { value: 1 }, uWrap: { value: 0 } };
   const mat = new THREE.ShaderMaterial({
     vertexShader: FALL_VERT,
     fragmentShader: FALL_FRAG,
