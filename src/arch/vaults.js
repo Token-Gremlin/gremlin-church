@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { archY, archPoints, sweepPlanar, sweep, lathe, xf, TAU } from './geom.js';
+import { archY, archPoints, segmentalArc, sweepPlanar, sweep, lathe, xf, TAU } from './geom.js';
 import { Parts, PROFILES, finial } from './components.js';
 
+/** k of the arch with the given rise: two-centred when rise >= span / 2, segmental when flatter. */
 function kForRise(span, rise) {
   const r = (rise * rise + (span * span) / 4) / span;
   return r / span;
@@ -9,6 +10,10 @@ function kForRise(span, rise) {
 
 /** Inverse of archY on the right half: distance from centre where arch reaches height Y above springing. */
 function archInv(Y, span, k) {
+  if (k < 0.5) {
+    const { R, yc } = segmentalArc(span, k);
+    return Math.sqrt(Math.max(0, R * R - (Y - yc) ** 2));
+  }
   const r = k * span;
   const uc = span / 2 - r;
   return uc + Math.sqrt(Math.max(0, r * r - Y * Y));
@@ -74,7 +79,7 @@ function cumulative(fn, n) {
  * Quadripartite rib vault over a bay. Local coords: x ∈ [−span/2, span/2], z from 0 to −len.
  * Springing y0, apex y1. Returns Parts ('vault' webbing, 'stone' ribs, 'gold' bosses).
  */
-export function ribVault({ span, len, y0, y1, ribs = true, startRib = true, endRib = false, wallRibs = true, boss = true, segX = 30, segT = 10 }) {
+export function ribVault({ span, len, y0, y1, ribs = true, startRib = true, endRib = false, wallRibs = true, boss = true, segX = 30, segT = 10, web = 'vault' }) {
   const p = new Parts();
   const rise = y1 - y0;
   const kh = kForRise(span, rise);
@@ -97,7 +102,7 @@ export function ribVault({ span, len, y0, y1, ribs = true, startRib = true, endR
       const e = Math.min(d, (de - d) * 0.75);
       return { p: new THREE.Vector3(x, h(x), z), u: arcH(i / segX), v: z, e };
     });
-    p.add('vault', geo);
+    p.add(web, geo);
   }
   // Wall panels on both sides
   const segZ = segX;
@@ -114,7 +119,7 @@ export function ribVault({ span, len, y0, y1, ribs = true, startRib = true, endR
       const e = Math.min(span / 2 - ax, (ax - xc) * 0.75);
       return { p: new THREE.Vector3(side * ax, y, z), u: arcG(i / segZ), v: side * ax, e };
     });
-    p.add('vault', geo);
+    p.add(web, geo);
   }
 
   if (ribs) {

@@ -171,8 +171,10 @@ export function buildExterior(ctx) {
     xf(g, { x: (x0 + x1) / 2, y: (y0 + y1) / 2, z: (towerZ1 + L.crossZ0) / 2 });
     p.add('slate', g);
   }
-  // crossing platform and parapet around the drum
-  p.add('slate', xf(new THREE.BoxGeometry(16.6, 0.4, 16.6), { y: CROSS.ring + 0.2, z: CROSS.cz }));
+  // crossing platform and parapet around the drum, open over the drum so the dome shows from the floor
+  const platform = new THREE.Shape([new THREE.Vector2(-8.3, -8.3), new THREE.Vector2(8.3, -8.3), new THREE.Vector2(8.3, 8.3), new THREE.Vector2(-8.3, 8.3)]);
+  platform.holes.push(new THREE.Path().absarc(0, 0, CROSS.c + 0.4, 0, TAU, true));
+  p.add('slate', xf(extrude(platform, 0.4, { curveSegments: 48 }), { rx: -Math.PI / 2, y: CROSS.ring + 0.2, z: CROSS.cz }));
   for (const [ax, az, bx, bz] of [[-8.3, -59.2, 8.3, -59.2], [8.3, -59.2, 8.3, -75.8], [8.3, -75.8, -8.3, -75.8], [-8.3, -75.8, -8.3, -59.2]]) parapet(ctx, zone, ax, az, bx, bz, CROSS.ring + 0.4, 1.0);
   for (const [x, z] of [[-8.3, -59.2], [8.3, -59.2], [8.3, -75.8], [-8.3, -75.8]]) {
     const pn = pinnacle({ w: 1.1, shaftH: 3.2, spireH: 5.5 });

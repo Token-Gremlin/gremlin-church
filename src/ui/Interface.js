@@ -36,6 +36,7 @@ export class Interface {
     $('btn-tour').onclick = () => app.enter('tour');
     for (const b of document.querySelectorAll('#quality-pick button')) {
       b.onclick = () => {
+        app.qualityLocked = true;
         app.applyQuality(b.dataset.q);
         this.refresh();
       };

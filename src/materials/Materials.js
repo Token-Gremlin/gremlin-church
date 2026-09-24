@@ -362,12 +362,20 @@ export function foliageMaterial(color, freq = 3) {
         '#include <map_fragment>',
         `#include <map_fragment>
         vec3 lq = vWPos * ${freq.toFixed(2)};
-        vec3 toClump;
+        lq += (vec3(vnoise3(lq * 0.43), vnoise3(lq * 0.43 + 17.1), vnoise3(lq * 0.43 + 41.7)) - 0.5) * 0.9;
+        vec3 toClump, toLeaf;
         vec2 lc = leafCells(lq, toClump);
-        float crevice = smoothstep(0.02, 0.32, lc.y - lc.x);
+        vec2 lf = leafCells(lq * 2.6 + 5.3, toLeaf);
+        // fade sub-pixel detail so distant trees settle into soft tone instead of shimmering
+        float nearC = clamp(1.4 - length(fwidth(lq)) * 1.6, 0.0, 1.0);
+        float nearL = clamp(1.4 - length(fwidth(lq)) * 4.2, 0.0, 1.0);
+        float crevice = mix(0.6, smoothstep(0.02, 0.3, lc.y - lc.x), nearC);
+        float leafEdge = mix(0.6, smoothstep(0.0, 0.22, lf.y - lf.x), nearL);
         float depth = 1.0 - smoothstep(0.25, 0.75, lc.x);
         float fine = vnoise3(lq * 3.7);
-        diffuseColor.rgb *= (0.38 + 0.62 * crevice) * (0.72 + 0.28 * depth) * (0.8 + 0.4 * fine);
+        float tint = fhash3(floor(lq + toClump)).x;
+        diffuseColor.rgb *= (0.5 + 0.5 * crevice) * (0.72 + 0.28 * leafEdge) * (0.76 + 0.24 * depth) * (0.82 + 0.36 * fine);
+        diffuseColor.rgb *= mix(vec3(0.85, 0.95, 0.8), vec3(1.2, 1.1, 0.75), tint);
         diffuseColor.rgb += vec3(0.02, 0.03, 0.0) * depth * fine;`,
       )
       .replace(
@@ -375,7 +383,8 @@ export function foliageMaterial(color, freq = 3) {
         `#include <normal_fragment_maps>
         {
           vec3 clumpN = -normalize(toClump + 1e-4);
-          vec3 wn = normalize(normalize(vWNrm) + clumpN * 1.1);
+          vec3 leafN = -normalize(toLeaf + 1e-4);
+          vec3 wn = normalize(normalize(vWNrm) + clumpN * 0.7 * nearC + leafN * 0.35 * nearL);
           normal = normalize((viewMatrix * vec4(wn, 0.0)).xyz);
         }`,
       );

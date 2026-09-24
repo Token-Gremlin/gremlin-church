@@ -232,7 +232,7 @@ export function buildCrypt(ctx) {
   for (let i = 0; i < nb; i++) {
     const zA = K.z0 - i * bl;
     for (const [xa, xb] of spans) {
-      const v = ribVault({ span: xb - xa, len: bl, y0: K.y + 2.2, y1: K.ceil, endRib: i === nb - 1, segX: 12, segT: 6, boss: true });
+      const v = ribVault({ span: xb - xa, len: bl, y0: K.y + 2.2, y1: K.ceil, endRib: i === nb - 1, segX: 12, segT: 6, boss: true, web: 'stoneShade' });
       v.toBatcher(ctx.B, zone, new THREE.Matrix4().makeTranslation((xa + xb) / 2, 0, zA));
     }
     for (const x of [-2.1, 2.1]) {
@@ -249,8 +249,9 @@ export function buildCrypt(ctx) {
     ctx.col.wall(s * K.x1, K.z0, s * K.x1, K.z1, K.y - 1, K.y + 3);
     for (let i = 0; i < nb; i++) {
       const zc = K.z0 - i * bl - bl / 2;
-      p.add('lapis', xf(new THREE.BoxGeometry(0.05, 1.8, 1.4), { x: s * (K.x1 - 0.01), y: K.y + 1.6, z: zc }));
-      p.add('gold', xf(new THREE.BoxGeometry(0.06, 0.06, 1.5), { x: s * (K.x1 - 0.02), y: K.y + 2.5, z: zc }));
+      p.add('goldMosaic', xf(new THREE.BoxGeometry(0.05, 1.8, 1.4), { x: s * (K.x1 - 0.01), y: K.y + 1.6, z: zc }));
+      for (const fy of [0.7, 2.5]) p.add('gold', xf(new THREE.BoxGeometry(0.06, 0.06, 1.5), { x: s * (K.x1 - 0.02), y: K.y + fy, z: zc }));
+      for (const fz of [-0.72, 0.72]) p.add('gold', xf(new THREE.BoxGeometry(0.06, 1.86, 0.06), { x: s * (K.x1 - 0.02), y: K.y + 1.6, z: zc + fz }));
     }
   }
   p.add('stone', xf(new THREE.BoxGeometry(K.x1 * 2 + 1.2, wallH, 0.6), { y: K.y + wallH / 2, z: K.z1 - 0.3 }));
@@ -285,7 +286,12 @@ export function buildCrypt(ctx) {
   }
   // reflecting pool with floating candles in the central aisle
   const pz0 = K.z0 - 5.5, pz1 = K.z1 + 5.2;
-  p.add('marble', xf(new THREE.BoxGeometry(2.8, 0.35, pz0 - pz1 + 0.6), { y: K.y + 0.17, z: (pz0 + pz1) / 2 }));
+  const pzc = (pz0 + pz1) / 2, plen = pz0 - pz1 + 0.6;
+  p.add('stoneShade', xf(new THREE.BoxGeometry(2.8, 0.06, plen), { y: K.y + 0.03, z: pzc }));
+  for (const s of [-1, 1]) {
+    p.add('marble', xf(new THREE.BoxGeometry(0.25, 0.4, plen), { x: s * 1.275, y: K.y + 0.2, z: pzc }));
+    p.add('marble', xf(new THREE.BoxGeometry(2.3, 0.4, 0.25), { y: K.y + 0.2, z: pzc + s * (plen / 2 - 0.125) }));
+  }
   ctx.col.box(-1.4, pz1 - 0.3, 1.4, pz0 + 0.3, K.y - 1, K.y + 0.5);
   const wm = waterMaterial(ctx.world, { deep: new THREE.Color(0.008, 0.01, 0.014) });
   wm.uniforms.uSkyTop.value.setRGB(0.05, 0.035, 0.022);

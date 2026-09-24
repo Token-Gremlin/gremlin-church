@@ -53,7 +53,9 @@ class App {
     this.night = this.nightTarget;
     this.dynScale = 1;
     this.dark = 0;
-    this.perf = { acc: 0, n: 0, since: 0 };
+    this.perf = { acc: 0, n: 0, since: 0, slow: 0 };
+    // an explicit choice (URL, title screen, Q key) is never overridden by the automatic step-down
+    this.qualityLocked = params.has('q');
     this.qualityName = params.get('q') || (matchMedia('(pointer: coarse)').matches ? 'low' : 'high');
     this.applyQuality(this.qualityName, false);
     addEventListener('resize', () => this.resize());
@@ -72,6 +74,7 @@ class App {
   }
 
   cycleQuality() {
+    this.qualityLocked = true;
     const i = QUALITY_ORDER.indexOf(this.qualityName);
     this.applyQuality(QUALITY_ORDER[(i + 1) % QUALITY_ORDER.length]);
     this.ui?.refresh();
@@ -336,6 +339,7 @@ class App {
     if (p.since < 2.5) return;
     const fps = p.n / p.acc;
     this.ui.setFps(`${fps.toFixed(0)} fps · ${this.qualityName} · ${(this.quality.scale * this.dynScale * 100).toFixed(0)}% · ${this.renderer.info.render.calls} calls`);
+    p.acc = p.n = p.since = 0;
     let next = this.dynScale;
     const floor = LITE ? 0.45 : 0.6;
     if (fps < 40 && this.dynScale > floor) next = Math.max(floor, this.dynScale - 0.1);
@@ -344,7 +348,13 @@ class App {
       this.dynScale = next;
       this.resize();
     }
-    p.acc = p.n = p.since = 0;
+    p.slow = fps < 26 && this.dynScale <= floor ? p.slow + 1 : 0;
+    const i = QUALITY_ORDER.indexOf(this.qualityName);
+    if (p.slow >= 2 && i > 0 && !this.qualityLocked) {
+      p.slow = 0;
+      this.applyQuality(QUALITY_ORDER[i - 1]);
+      this.ui.refresh();
+    }
   }
 
   // ------------------------------------------------------------------ tooling
@@ -371,16 +381,16 @@ class App {
       this.camera.updateProjectionMatrix();
     }
     // Re-aim without reloading: __view({ pos: [x,y,z], look: [yawDeg, pitchDeg] } | { tour: [chapter, t] }, frames)
+    // each view starts from the same hour and lens so results never depend on the previous view
+    const baseFov = this.camera.fov;
     window.__view = (v, frames = 3) => new Promise((resolve) => {
-      if (v.night !== undefined) this.world.setNight((this.night = this.nightTarget = v.night));
-      if (v.fov) {
-        this.camera.fov = v.fov;
-        this.camera.updateProjectionMatrix();
-      }
-      if (v.tour) {
-        const c = this.tour.chapters[v.tour[0]];
-        if (c.def.night !== undefined && v.night === undefined) this.world.setNight((this.night = this.nightTarget = c.def.night));
-        c.sample(v.tour[1] || 0, this.tour.eye, this.tour.target);
+      const c = v.tour ? this.tour.chapters[v.tour[0]] : null;
+      this.world.setNight((this.night = this.nightTarget = v.night ?? c?.def.night ?? 0));
+      this.camera.fov = v.fov || baseFov;
+      this.camera.updateProjectionMatrix();
+      if (c || v.p) {
+        if (c) c.sample(v.tour[1] || 0, this.tour.eye, this.tour.target);
+        else this.tour.eye.fromArray(v.p), this.tour.target.fromArray(v.t);
         this.mode = 'shot-tour';
         this.tour.apply(this.camera);
       } else {
