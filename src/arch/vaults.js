@@ -10,6 +10,10 @@ function kForRise(span, rise) {
 
 /** Inverse of archY on the right half: distance from centre where arch reaches height Y above springing. */
 function archInv(Y, span, k) {
+  if (k < 0.5) {
+    const { R, yc } = segmentalArc(span, k);
+    return Math.sqrt(Math.max(0, R * R - (Y - yc) ** 2));
+  }
   const r = k * span;
   const uc = span / 2 - r;
   return uc + Math.sqrt(Math.max(0, r * r - Y * Y));
