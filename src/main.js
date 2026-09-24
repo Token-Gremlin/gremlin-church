@@ -388,8 +388,9 @@ class App {
       this.world.setNight((this.night = this.nightTarget = v.night ?? c?.def.night ?? 0));
       this.camera.fov = v.fov || baseFov;
       this.camera.updateProjectionMatrix();
-      if (c) {
-        c.sample(v.tour[1] || 0, this.tour.eye, this.tour.target);
+      if (c || v.p) {
+        if (c) c.sample(v.tour[1] || 0, this.tour.eye, this.tour.target);
+        else this.tour.eye.fromArray(v.p), this.tour.target.fromArray(v.t);
         this.mode = 'shot-tour';
         this.tour.apply(this.camera);
       } else {
