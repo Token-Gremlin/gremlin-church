@@ -176,13 +176,14 @@ export function furnishInterior(ctx) {
     ctx.col.box(x - 0.4, z - 0.85, x + 0.4, z + 0.85, -1, 1.5);
     for (let row = 0; row < 3; row++) {
       for (let k = 0; k < 11; k++) {
-        if (r() < 0.2) continue;
         const lx = -0.7 + k * 0.14;
         const lz = [0.1, -0.12, -0.24][row];
         const ly = [0.93, 1.08, 1.23][row];
         const p = new THREE.Vector3(lx, ly, lz).applyAxisAngle(new THREE.Vector3(0, 1, 0), ry).add(new THREE.Vector3(x, 0, z));
         inst.add('votive', M4(p.x, p.y, p.z), 'aisles');
-        votivePositions.push(p.clone().add(new THREE.Vector3(0, 0.1, 0)));
+        const flame = p.clone().add(new THREE.Vector3(0, 0.1, 0));
+        if (r() < 0.62) votivePositions.push(flame);
+        else ctx.world.unlitVotives.push({ pos: flame, lit: false });
       }
     }
     addLight(new THREE.Vector3(x, 1.6, z), 5, 0xff9a40, 8);

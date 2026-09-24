@@ -94,6 +94,9 @@ export function terrainMaterial(detail, envMap) {
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNrm = normalize(mat3(modelMatrix) * objectNormal);');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNrm;\n${NOISE_GLSL}`)
+      .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+      // the crypt is carved out of the plateau beneath the choir
+      if (abs(vWPos.x) < 7.6 && vWPos.z < -69.8 && vWPos.z > -98.6 && vWPos.y > -5.0) discard;`)
       .replace('#include <map_fragment>', `#include <map_fragment>\n${TERRAIN_FRAG_CHUNK}`);
   };
   mat.customProgramCacheKey = () => 'terrain';
@@ -128,10 +131,16 @@ uniform vec3 uHaze;
 uniform vec3 uHazeTop;
 uniform vec3 uAmbient;
 uniform float uNight;
+uniform vec3 uMoonDir;
 varying vec3 vWPos;
 varying vec3 vNrm;
 void main() {
   vec3 n = normalize(vNrm);
+  vec3 lightDir = normalize(mix(uSunDir, uMoonDir, uNight));
+  vec3 lightCol = mix(uSunColor, vec3(0.1, 0.13, 0.24), uNight);
+  vec3 ambient = mix(uAmbient, vec3(0.006, 0.009, 0.02), uNight);
+  vec3 hazeLo = mix(uHaze, vec3(0.012, 0.018, 0.045), uNight);
+  vec3 hazeHi = mix(uHazeTop, vec3(0.006, 0.01, 0.03), uNight);
   float h = vWPos.y;
   float slope = 1.0 - n.y;
   float nz = fbm(vWPos.xz * 0.006);
@@ -141,12 +150,12 @@ void main() {
   vec3 forest = vec3(0.045, 0.075, 0.05);
   vec3 alb = mix(forest, rock, smoothstep(60.0, 240.0, h + nz * 90.0));
   alb = mix(alb, vec3(0.95, 0.94, 1.0), snow);
-  float diff = max(dot(n, uSunDir), 0.0);
-  float wrap = max(dot(n, uSunDir) * 0.5 + 0.5, 0.0);
-  vec3 col = alb * (uSunColor * (diff * 1.5 + wrap * 0.15) + uAmbient * (0.6 + 0.4 * n.y));
+  float diff = max(dot(n, lightDir), 0.0);
+  float wrap = max(dot(n, lightDir) * 0.5 + 0.5, 0.0);
+  vec3 col = alb * (lightCol * (diff * 1.5 + wrap * 0.15) + ambient * (0.6 + 0.4 * n.y));
   float dist = length(vWPos.xz - cameraPosition.xz);
   float haze = 1.0 - exp(-dist * 0.00034);
-  vec3 hazeCol = mix(uHaze, uHazeTop, clamp(h / 900.0, 0.0, 1.0));
+  vec3 hazeCol = mix(hazeLo, hazeHi, clamp(h / 900.0, 0.0, 1.0));
   col = mix(col, hazeCol, clamp(haze * 0.95, 0.0, 0.93));
   gl_FragColor = vec4(col, 1.0);
 }`;
@@ -156,6 +165,7 @@ export function buildTerrain(ctx, world) {
   const group = new THREE.Group();
   group.name = 'terrain';
   const tmat = terrainMaterial(mats.detail, world.lighting.envExterior);
+  world.terrainMaterial = tmat;
   // near terrain (plateau + cliffs + valley)
   const near = new THREE.Mesh(gridGeometry(-260, -300, 260, 380, 208, 272, groundHeight), tmat);
   near.receiveShadow = true;
@@ -188,6 +198,7 @@ export function buildTerrain(ctx, world) {
     uHazeTop: { value: new THREE.Color(0.62, 0.44, 0.62) },
     uAmbient: { value: new THREE.Color(0.2, 0.17, 0.3) },
     uNight: { value: 0 },
+    uMoonDir: { value: world.sky.moonDir },
   };
   world.mountainUniforms = mUniforms;
   const mMat = new THREE.ShaderMaterial({ vertexShader: MOUNTAIN_VERT, fragmentShader: MOUNTAIN_FRAG, uniforms: mUniforms });

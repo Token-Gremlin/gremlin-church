@@ -10,6 +10,7 @@ import { WallFrame, slab, hMould, lbox, lBalustrade, addGlass } from './common.j
 import { CHAPEL_WIN } from '../glassDesigns.js';
 import { madonnaParts, angelParts, pedestalParts, flowerUrnParts, candlestickParts } from '../props/protos.js';
 import { CROSS } from './crossing.js';
+import { waterMaterial } from '../landscape/Terrain.js';
 
 const M4 = (x, y, z, ry = 0, s = 1) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ry, 0)), new THREE.Vector3(s, s, s));
 
@@ -134,14 +135,12 @@ export function buildLadyChapel(ctx) {
     }
   }
   const r = rng(5);
-  const lit = [];
-  const unlit = [];
-  for (const v of votives) (r() < 0.45 ? lit : unlit).push(v);
-  for (const v of lit) {
+  for (const v of votives) {
     ctx.inst.add('votive', M4(v.x, v.y, v.z), zone);
-    flames.push(v.clone().add(new THREE.Vector3(0, 0.1, 0)));
+    const flame = v.clone().add(new THREE.Vector3(0, 0.1, 0));
+    if (r() < 0.45) flames.push(flame);
+    else ctx.world.unlitVotives.push({ pos: flame, lit: false });
   }
-  ctx.world.unlitVotives = unlit.map((v) => ({ pos: v, lit: false }));
   ctx.anchors.lights.push({ pos: new THREE.Vector3(far.x, 2.2, far.z + 1.6), intensity: 8, color: new THREE.Color(0xffa860), radius: 10 });
   ctx.anchors.lights.push({ pos: new THREE.Vector3(C.cx, 9.5, C.cz), intensity: 10, color: new THREE.Color(0xffc080), radius: 14 });
   // hanging lamp
@@ -288,7 +287,14 @@ export function buildCrypt(ctx) {
   const pz0 = K.z0 - 5.5, pz1 = K.z1 + 5.2;
   p.add('marble', xf(new THREE.BoxGeometry(2.8, 0.35, pz0 - pz1 + 0.6), { y: K.y + 0.17, z: (pz0 + pz1) / 2 }));
   ctx.col.box(-1.4, pz1 - 0.3, 1.4, pz0 + 0.3, K.y - 1, K.y + 0.5);
-  const water = new THREE.Mesh(new THREE.PlaneGeometry(2.3, pz0 - pz1), ctx.world.waterMaterials[0]);
+  const wm = waterMaterial(ctx.world, { deep: new THREE.Color(0.008, 0.01, 0.014) });
+  wm.uniforms.uSkyTop.value.setRGB(0.05, 0.035, 0.022);
+  wm.uniforms.uSkyHorizon.value.setRGB(0.42, 0.24, 0.1);
+  wm.uniforms.uSunColor.value.setRGB(0, 0, 0);
+  wm.uniforms.uGlitter.value = 0;
+  wm.userData.indoor = true;
+  ctx.world.waterMaterials.push(wm);
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(2.3, pz0 - pz1), wm);
   water.rotation.x = -Math.PI / 2;
   water.position.set(0, K.y + 0.3, (pz0 + pz1) / 2);
   ctx.world.scene.add(water);
@@ -339,7 +345,7 @@ export function buildTurret(ctx) {
   const sides = 14;
   const rc = (T.rOut + T.rIn) / 2;
   const sw = 2 * rc * Math.tan(Math.PI / sides) + 0.05;
-  const wallTop = T.top + 1.2;
+  const wallTop = T.top - 0.3;
   for (let k = 0; k < sides; k++) {
     const th = (k / sides) * TAU;
     const o = new THREE.Vector3(T.x + Math.cos(th) * rc, 0, T.z + Math.sin(th) * rc);
@@ -352,9 +358,9 @@ export function buildTurret(ctx) {
     slab(ctx, zone, f, outlineWithNotches(-sw / 2, sw / 2, 0, wallTop, notches), holes, T.rOut - T.rIn);
     const th0 = ((k - 0.5) / sides) * TAU, th1 = ((k + 0.5) / sides) * TAU;
     const rw = T.rIn / Math.cos(Math.PI / sides);
-    if (!facesTransept) ctx.col.wall(T.x + Math.cos(th0) * rw, T.z + Math.sin(th0) * rw, T.x + Math.cos(th1) * rw, T.z + Math.sin(th1) * rw, -1, T.top + 3);
+    if (!facesTransept) ctx.col.wall(T.x + Math.cos(th0) * rw, T.z + Math.sin(th0) * rw, T.x + Math.cos(th1) * rw, T.z + Math.sin(th1) * rw, -1, T.top - 0.2);
     else {
-      ctx.col.wall(T.x + Math.cos(th0) * rw, T.z + Math.sin(th0) * rw, T.x + Math.cos(th) * rw - 0.8, T.z + Math.sin(th) * rw, 2.4, T.top + 3);
+      ctx.col.wall(T.x + Math.cos(th0) * rw, T.z + Math.sin(th0) * rw, T.x + Math.cos(th) * rw - 0.8, T.z + Math.sin(th) * rw, 2.4, T.top - 0.2);
     }
   }
   // doorway passage from the transept
@@ -430,12 +436,22 @@ export function buildTurret(ctx) {
   }
   p.add('domeBlue', lathe(dp, 24).translate(T.x, 0, T.z));
   finial(p, T.x, by + 6.7, T.z, 0.35, 'gold');
-  // bell hanging in the belvedere
+  // bell hanging in the belvedere from a yoke, pivoting at its crown so it can swing
+  const yoke = new Parts();
+  yoke.add('wood', xf(new THREE.BoxGeometry(2 * (T.rOut - 0.1), 0.24, 0.28), { y: by + 3.36, ry: -0.3 }));
+  for (const o of [-0.5, 0.5]) yoke.add('iron', xf(new THREE.BoxGeometry(0.06, 0.28, 0.32), { x: Math.cos(0.3) * o, y: by + 3.36, z: Math.sin(0.3) * o, ry: -0.3 }));
+  yoke.toBatcher(ctx.B, zone, new THREE.Matrix4().makeTranslation(T.x, 0, T.z), true);
   const bell = new Parts();
-  bell.add('bronze', lathe([[0.001, 0], [0.62, 0.02], [0.56, 0.2], [0.38, 0.62], [0.3, 0.95], [0.001, 1.02]], 20));
-  bell.add('iron', xf(new THREE.BoxGeometry(0.08, 0.5, 0.08), { y: 1.2 }));
-  bell.toBatcher(ctx.B, zone, new THREE.Matrix4().makeTranslation(T.x, by + 2.2, T.z), true);
-  ctx.world.bell = new THREE.Vector3(T.x, by + 2.7, T.z);
+  bell.add('bronze', lathe([[0.001, -0.14], [0.26, -0.36], [0.42, -0.74], [0.47, -0.86], [0.53, -0.82], [0.47, -0.67], [0.32, -0.34], [0.25, -0.08], [0.001, -0.03]], 28));
+  bell.add('bronze', xf(new THREE.TorusGeometry(0.48, 0.03, 6, 28), { rx: Math.PI / 2, y: -0.78 }));
+  bell.add('gold', xf(new THREE.TorusGeometry(0.32, 0.018, 6, 24), { rx: Math.PI / 2, y: -0.35 }));
+  bell.add('iron', xf(new THREE.BoxGeometry(0.1, 0.2, 0.1), { y: 0.0 }));
+  bell.add('iron', xf(new THREE.SphereGeometry(0.075, 8, 6), { y: -0.76 }));
+  const bellGroup = bell.toGroup(ctx.mats, 'bell');
+  bellGroup.position.set(T.x, by + 3.2, T.z);
+  ctx.world.scene.add(bellGroup);
+  ctx.world.bellMesh = bellGroup;
+  ctx.world.bell = new THREE.Vector3(T.x, by + 2.5, T.z);
   // roof collar where the turret meets the transept roof line
   p.add('gold', xf(new THREE.TorusGeometry(T.rOut + 0.02, 0.06, 6, 32), { rx: Math.PI / 2, x: T.x, y: 35.6, z: T.z }));
   p.toBatcher(ctx.B, zone);

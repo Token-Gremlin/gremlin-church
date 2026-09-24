@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  xf, cyl, lathe, polyLathe, extrude, sweepPlanar, sweep, archPoints, archRise, TAU, hardProfile, boxMM,
+  xf, cyl, lathe, polyLathe, extrude, sweepPlanar, sweep, archPoints, archRise, TAU, hardProfile, boxMM, Batcher,
 } from './geom.js';
 import { windowLayout, lightPolygon, foilPolygon, outerPolygon, roseLayout } from './windowLayout.js';
 
@@ -40,6 +40,15 @@ export class Parts {
         batcher.add(`${m}|${zone}`, c);
       }
     }
+  }
+
+  /** A standalone group (one mesh per material) for parts that need to move. */
+  toGroup(materials, name = 'parts') {
+    const b = new Batcher();
+    this.toBatcher(b, name, null, true);
+    const g = b.build(materials, { name });
+    g.traverse((o) => { o.matrixAutoUpdate = true; });
+    return g;
   }
 }
 

@@ -69,10 +69,11 @@ void main() {
 }`;
 
 export class Flames {
-  constructor(positions, { flameGeometry, intensity = 7, haloSize = 0.28, haloIntensity = 0.35 } = {}) {
+  constructor(positions, { flameGeometry, intensity = 7, haloSize = 0.28, haloIntensity = 0.35, spare = 0 } = {}) {
     this.group = new THREE.Group();
     this.group.name = 'flames';
-    const n = positions.length;
+    const n = positions.length + spare;
+    this.growing = [];
     this.uniforms = { uTime: { value: 0 }, uIntensity: { value: intensity } };
     const mat = new THREE.ShaderMaterial({
       vertexShader: FLAME_VERT,
@@ -114,10 +115,39 @@ export class Flames {
     this.group.add(halos);
     this.flames = flames;
     this.halos = halos;
+    flames.count = halos.count = positions.length;
+  }
+
+  /** Light a new flame at runtime; it grows from a spark over a second. */
+  add(p, time) {
+    const i = this.flames.count;
+    if (i >= this.flames.instanceMatrix.count) return false;
+    this.flames.count = this.halos.count = i + 1;
+    this.growing.push({ i, p: p.clone(), t0: time });
+    this._place(i, p, 0.01);
+    return true;
+  }
+
+  _place(i, p, s) {
+    const m = new THREE.Matrix4().compose(new THREE.Vector3(p.x, p.y - 0.04, p.z), new THREE.Quaternion(), new THREE.Vector3(s, s, s));
+    this.flames.setMatrixAt(i, m);
+    m.compose(new THREE.Vector3(p.x, p.y + 0.02, p.z), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
+    this.halos.setMatrixAt(i, s > 0.05 ? m : m.makeScale(0, 0, 0));
+    this.flames.instanceMatrix.needsUpdate = true;
+    this.halos.instanceMatrix.needsUpdate = true;
   }
 
   update(time) {
     this.uniforms.uTime.value = time;
+    for (let k = this.growing.length - 1; k >= 0; k--) {
+      const g = this.growing[k];
+      const t = Math.min(1, (time - g.t0) / 1.1);
+      // ease-out-back: overshoots a little, like a wick catching
+      const u = t - 1;
+      const s = 1 + 2.70158 * u * u * u + 1.70158 * u * u;
+      this._place(g.i, g.p, Math.max(0.01, s));
+      if (t >= 1) this.growing.splice(k, 1);
+    }
   }
 }
 

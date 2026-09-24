@@ -69,7 +69,9 @@ export class Lighting {
     this.inside = 1;
     this.night = 0;
     this.interiorSunDir = new THREE.Vector3(-0.5, 0.83, 0.26).normalize();
+    this.floodDir = new THREE.Vector3(0.18, 0.2, 1).normalize();
     this._dir = new THREE.Vector3();
+    this._ext = new THREE.Vector3();
     this.envInterior = null;
     this.envExterior = null;
     this.fog = new THREE.FogExp2(0xffffff, 0.0015);
@@ -86,9 +88,9 @@ export class Lighting {
         fog: new THREE.Color(1.0, 0.86, 0.66), fogD: 0.0042, env: 0.92,
       },
       nightExt: {
-        sunColor: new THREE.Color(0.45, 0.55, 0.9), sunI: 0.55,
-        sky: new THREE.Color(0.18, 0.22, 0.4), ground: new THREE.Color(0.06, 0.05, 0.05), hemiI: 0.35,
-        fog: new THREE.Color(0.08, 0.1, 0.2), fogD: 0.0014, env: 0.5,
+        sunColor: new THREE.Color(1.0, 0.7, 0.42), sunI: 1.5,
+        sky: new THREE.Color(0.14, 0.18, 0.34), ground: new THREE.Color(0.06, 0.05, 0.045), hemiI: 0.4,
+        fog: new THREE.Color(0.03, 0.04, 0.08), fogD: 0.0012, env: 0.5,
       },
       nightInt: {
         sunColor: new THREE.Color(0.45, 0.55, 0.9), sunI: 0.35,
@@ -106,8 +108,11 @@ export class Lighting {
     this.sun.shadow.map = null;
   }
 
-  /** inside: 0 (outside) .. 1 (inside); camera for shadow fitting. */
-  update(camera, inside, night) {
+  /**
+   * inside: 0 (outside) .. 1 (inside); night: 0 dusk .. 1 night;
+   * dark: 0 .. 1 for enclosed candlelit spaces (crypt, stair) where sky light cannot reach.
+   */
+  update(camera, inside, night, dark = 0) {
     this.inside = inside;
     this.night = night;
     const P = this.params;
@@ -123,16 +128,17 @@ export class Lighting {
       return day + (nt - day) * night;
     };
     this.sun.color.copy(lerpSet('sunColor'));
-    this.sun.intensity = lerpSet('sunI');
+    this.sun.intensity = lerpSet('sunI') * (1 - dark);
     this.hemi.color.copy(lerpSet('sky'));
     this.hemi.groundColor.copy(lerpSet('ground'));
-    this.hemi.intensity = lerpSet('hemiI');
-    this.fog.color.copy(lerpSet('fog'));
-    this.fog.density = lerpSet('fogD');
-    this.scene.environmentIntensity = lerpSet('env');
+    this.hemi.intensity = lerpSet('hemiI') * (1 - 0.82 * dark);
+    this.fog.color.copy(lerpSet('fog')).multiplyScalar(1 - 0.7 * dark);
+    this.fog.density = lerpSet('fogD') * (1 + dark * 2);
+    this.scene.environmentIntensity = lerpSet('env') * (1 - 0.7 * dark);
 
-    const extDir = night > 0.5 ? this.sky.moonDir : this.sky.sunDir;
-    this._dir.copy(extDir).lerp(this.interiorSunDir, inside).normalize();
+    // after dark the façade is floodlit from the promenade
+    this._ext.copy(this.sky.sunDir).lerp(this.floodDir, night).normalize();
+    this._dir.copy(this._ext).lerp(this.interiorSunDir, inside).normalize();
     // Fit shadow frustum: interior covers the whole church; exterior follows the camera.
     const cam = camera.position;
     const center = inside > 0.5 ? new THREE.Vector3(0, 10, -50) : new THREE.Vector3(cam.x, 0, cam.z - 20);

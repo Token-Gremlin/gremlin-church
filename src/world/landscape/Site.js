@@ -1,10 +1,14 @@
 import * as THREE from 'three';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { L } from '../layout.js';
 import { Parts, balusterGeometry, pinnacle, finial } from '../../arch/components.js';
 import { xf, cyl, lathe, polyLathe, TAU, rng } from '../../arch/geom.js';
 import { angelParts, pedestalParts, flowerUrnParts } from '../props/protos.js';
 
 const M4 = (x, y, z, ry = 0, s = 1) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ry, 0)), new THREE.Vector3(s, s, s));
+
+/** Footprint (|x| < x, z0 < z < z1) kept clear under the choir for the crypt. */
+export const CRYPT_VOID = { x: 7.6, z0: -98.6, z1: -69.8 };
 
 export const SITE = {
   terraceX: 30,
@@ -34,23 +38,40 @@ export function lanternParts() {
   return p;
 }
 
+/** Smooth 3D value noise in [-1, 1] for lumpy foliage silhouettes. */
+function lumpNoise(x, y, z, seed) {
+  const h = (i, j, k) => {
+    const s = Math.sin(i * 127.1 + j * 311.7 + k * 74.7 + seed * 19.3) * 43758.5453;
+    return (s - Math.floor(s)) * 2 - 1;
+  };
+  const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z);
+  const fx = x - ix, fy = y - iy, fz = z - iz;
+  const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy), w = fz * fz * (3 - 2 * fz);
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const x00 = lerp(h(ix, iy, iz), h(ix + 1, iy, iz), u), x10 = lerp(h(ix, iy + 1, iz), h(ix + 1, iy + 1, iz), u);
+  const x01 = lerp(h(ix, iy, iz + 1), h(ix + 1, iy, iz + 1), u), x11 = lerp(h(ix, iy + 1, iz + 1), h(ix + 1, iy + 1, iz + 1), u);
+  return lerp(lerp(x00, x10, v), lerp(x01, x11, v), w);
+}
+
 export function cypressParts(seed = 1, h = 10) {
   const p = new Parts();
   const r = rng(seed);
   const prof = [];
-  const n = 18;
+  const n = 40;
+  const girth = 0.95 + 0.2 * r();
   for (let i = 0; i <= n; i++) {
     const t = i / n;
-    const rad = Math.sin(Math.pow(t, 0.55) * Math.PI) * (0.95 + 0.25 * r()) * (1 - t * 0.45) * (h / 10);
+    const rad = Math.sin(Math.pow(t, 0.5) * Math.PI) * girth * (1 - t * 0.5) * (h / 10);
     prof.push([Math.max(0.02, rad), t * h]);
   }
-  const g = lathe(prof, 12);
+  const g = lathe(prof, 22);
   const pos = g.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-    const a = Math.atan2(z, x);
-    const k = 1 + 0.14 * Math.sin(a * 5 + y * 1.7 + seed) + 0.1 * Math.sin(a * 11 - y * 3.1) + 0.06 * Math.sin(y * 7 + a * 3);
-    pos.setXYZ(i, x * k, y, z * k);
+    // flame-like tufts: coarse lumps plus finer ones, flattened vertically
+    const k = 1 + 0.22 * lumpNoise(x * 1.4, y * 0.7, z * 1.4, seed) + 0.1 * lumpNoise(x * 3.5, y * 1.8, z * 3.5, seed + 7);
+    const lean = 0.012 * y * y / h;
+    pos.setXYZ(i, x * k + lean, y, z * k);
   }
   g.computeVertexNormals();
   p.add('foliageDark', g);
@@ -65,11 +86,14 @@ export function roundTreeParts(seed = 2, s = 1) {
   for (let i = 0; i < 9; i++) {
     const a = r() * TAU;
     const rr = r() * 1.3 * s;
-    const g = new THREE.IcosahedronGeometry((1.1 + r() * 0.7) * s, 1);
+    const ico = new THREE.IcosahedronGeometry((1.1 + r() * 0.7) * s, 3);
+    ico.deleteAttribute('normal');
+    ico.deleteAttribute('uv');
+    const g = mergeVertices(ico);
     const pos = g.attributes.position;
     for (let k = 0; k < pos.count; k++) {
       const v = new THREE.Vector3().fromBufferAttribute(pos, k);
-      v.multiplyScalar(1 + 0.15 * Math.sin(v.x * 5 + v.y * 3 + i));
+      v.multiplyScalar(1 + 0.2 * lumpNoise(v.x * 1.8, v.y * 1.8, v.z * 1.8, seed + i) + 0.08 * lumpNoise(v.x * 4, v.y * 4, v.z * 4, seed + i + 3));
       pos.setXYZ(k, v.x, v.y, v.z);
     }
     g.computeVertexNormals();
@@ -99,8 +123,19 @@ export function buildSite(ctx) {
   col.floor(-S.terraceX, S.terraceZ0 - 0.1, S.terraceX, S.terraceZ1, tY);
   // Podium carrying the basilica and the garden terrace
   const PX0 = -73, PX1 = 36, PZ0 = -114, PZ1 = S.terraceZ0;
-  p.add('stone', xf(new THREE.BoxGeometry(PX1 - PX0, 3.57, PZ1 - PZ0), { x: (PX0 + PX1) / 2, y: -1.815, z: (PZ0 + PZ1) / 2 }));
-  p.add('stoneWarm', xf(new THREE.BoxGeometry(PX1 - PX0 + 0.5, 0.35, PZ1 - PZ0 + 0.5), { x: (PX0 + PX1) / 2, y: -0.3, z: (PZ0 + PZ1) / 2 }));
+  // solid everywhere except the void of the crypt beneath the choir
+  const H = CRYPT_VOID;
+  const block = (x0, x1, z0, z1) => p.add('stone', xf(new THREE.BoxGeometry(x1 - x0, 3.57, z1 - z0), { x: (x0 + x1) / 2, y: -1.815, z: (z0 + z1) / 2 }));
+  block(PX0, PX1, H.z1, PZ1);
+  block(PX0, PX1, PZ0, H.z0);
+  block(PX0, -H.x, H.z0, H.z1);
+  block(H.x, PX1, H.z0, H.z1);
+  // cornice band around the podium's edge
+  const band = (x0, x1, z0, z1) => p.add('stoneWarm', xf(new THREE.BoxGeometry(x1 - x0, 0.35, z1 - z0), { x: (x0 + x1) / 2, y: -0.3, z: (z0 + z1) / 2 }));
+  band(PX0 - 0.25, PX1 + 0.25, PZ0 - 0.25, PZ0 + 1.5);
+  band(PX0 - 0.25, PX1 + 0.25, PZ1 - 1.5, PZ1 + 0.25);
+  band(PX0 - 0.25, PX0 + 1.5, PZ0 + 1.5, PZ1 - 1.5);
+  band(PX1 - 1.5, PX1 + 0.25, PZ0 + 1.5, PZ1 - 1.5);
   col.floor(PX0, PZ0, PX1, PZ1, tY);
   ctx.podium = { x0: PX0, x1: PX1, z0: PZ0, z1: PZ1 };
   // balustrades on the terrace
