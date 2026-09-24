@@ -139,7 +139,7 @@ export class Player {
     if (k.has('KeyS') || k.has('ArrowDown')) fx -= 1;
     if (k.has('KeyA') || k.has('ArrowLeft')) sx -= 1;
     if (k.has('KeyD') || k.has('ArrowRight')) sx += 1;
-    if (k.has('Space') || k.has('KeyE') && false) up += 1;
+    if (k.has('Space')) up += 1;
     if (k.has('KeyC') || k.has('ControlLeft')) up -= 1;
     fx -= this.touch.move.y;
     sx += this.touch.move.x;
