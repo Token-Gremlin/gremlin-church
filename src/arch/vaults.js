@@ -79,7 +79,7 @@ function cumulative(fn, n) {
  * Quadripartite rib vault over a bay. Local coords: x ∈ [−span/2, span/2], z from 0 to −len.
  * Springing y0, apex y1. Returns Parts ('vault' webbing, 'stone' ribs, 'gold' bosses).
  */
-export function ribVault({ span, len, y0, y1, ribs = true, startRib = true, endRib = false, wallRibs = true, boss = true, segX = 30, segT = 10 }) {
+export function ribVault({ span, len, y0, y1, ribs = true, startRib = true, endRib = false, wallRibs = true, boss = true, segX = 30, segT = 10, web = 'vault' }) {
   const p = new Parts();
   const rise = y1 - y0;
   const kh = kForRise(span, rise);
@@ -102,7 +102,7 @@ export function ribVault({ span, len, y0, y1, ribs = true, startRib = true, endR
       const e = Math.min(d, (de - d) * 0.75);
       return { p: new THREE.Vector3(x, h(x), z), u: arcH(i / segX), v: z, e };
     });
-    p.add('vault', geo);
+    p.add(web, geo);
   }
   // Wall panels on both sides
   const segZ = segX;
@@ -119,7 +119,7 @@ export function ribVault({ span, len, y0, y1, ribs = true, startRib = true, endR
       const e = Math.min(span / 2 - ax, (ax - xc) * 0.75);
       return { p: new THREE.Vector3(side * ax, y, z), u: arcG(i / segZ), v: side * ax, e };
     });
-    p.add('vault', geo);
+    p.add(web, geo);
   }
 
   if (ribs) {
