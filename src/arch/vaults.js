@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { archY, archPoints, sweepPlanar, sweep, lathe, xf, TAU } from './geom.js';
+import { archY, archPoints, segmentalArc, sweepPlanar, sweep, lathe, xf, TAU } from './geom.js';
 import { Parts, PROFILES, finial } from './components.js';
 
+/** k of the arch with the given rise: two-centred when rise >= span / 2, segmental when flatter. */
 function kForRise(span, rise) {
   const r = (rise * rise + (span * span) / 4) / span;
   return r / span;

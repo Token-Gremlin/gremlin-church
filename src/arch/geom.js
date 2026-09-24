@@ -58,17 +58,33 @@ export function cyl(rTop, rBot, h, seg = 16, x = 0, y = 0, z = 0, open = false) 
 // Pointed arches
 // ---------------------------------------------------------------------------
 
+/**
+ * Below k = 0.5 an arch is segmental: a single arc through both springers whose centre lies
+ * below the springing line, with rise = span * sqrt(k - 1/4), so the rise stays continuous with
+ * the two-centred family at the semicircle.
+ */
+export function segmentalArc(span, k) {
+  const rise = span * Math.sqrt(Math.max(1e-6, k - 0.25));
+  const R = (rise * rise + (span * span) / 4) / (2 * rise);
+  return { rise, R, yc: rise - R };
+}
+
 /** Rise of a two-centred arch of given span. k = radius / span (0.5 = semicircle). */
 export function archRise(span, k) {
+  if (k < 0.5) return segmentalArc(span, k).rise;
   const r = k * span;
   return Math.sqrt(Math.max(0, r * r - (r - span / 2) ** 2));
 }
 
 /** Height of the arch intrados at horizontal offset x from its centre. */
 export function archY(x, span, k) {
-  const r = k * span;
   const ax = Math.abs(x);
   if (ax >= span / 2) return 0;
+  if (k < 0.5) {
+    const { R, yc } = segmentalArc(span, k);
+    return Math.max(0, yc + Math.sqrt(Math.max(0, R * R - ax * ax)));
+  }
+  const r = k * span;
   const c = span / 2 - r; // centre of the opposite arc (x of centre for the right half is -(r - span/2))
   const dx = ax - c;
   return Math.sqrt(Math.max(0, r * r - dx * dx));
@@ -79,15 +95,24 @@ export function archY(x, span, k) {
  * through the apex to the right springer. Optional straight legs below the springing.
  */
 export function archPoints(span, k, segs = 16, leg = 0) {
-  const r = k * span;
-  const cx = -span / 2 + r; // centre of left arc
-  const cosA = THREE.MathUtils.clamp((0 - cx) / r, -1, 1);
-  const thA = Math.acos(cosA);
   const pts = [];
   if (leg > 0) pts.push(new THREE.Vector2(-span / 2, -leg));
-  for (let i = 0; i <= segs; i++) {
-    const th = Math.PI + (thA - Math.PI) * (i / segs);
-    pts.push(new THREE.Vector2(cx + r * Math.cos(th), r * Math.sin(th)));
+  if (k < 0.5) {
+    const { R, yc } = segmentalArc(span, k);
+    const th0 = Math.atan2(-yc, -span / 2);
+    for (let i = 0; i <= segs; i++) {
+      const th = th0 + (Math.PI / 2 - th0) * (i / segs);
+      pts.push(new THREE.Vector2(R * Math.cos(th), yc + R * Math.sin(th)));
+    }
+  } else {
+    const r = k * span;
+    const cx = -span / 2 + r; // centre of left arc
+    const cosA = THREE.MathUtils.clamp((0 - cx) / r, -1, 1);
+    const thA = Math.acos(cosA);
+    for (let i = 0; i <= segs; i++) {
+      const th = Math.PI + (thA - Math.PI) * (i / segs);
+      pts.push(new THREE.Vector2(cx + r * Math.cos(th), r * Math.sin(th)));
+    }
   }
   const right = [];
   for (let i = pts.length - 2; i >= 0; i--) right.push(new THREE.Vector2(-pts[i].x, pts[i].y));
