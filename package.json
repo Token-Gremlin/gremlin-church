@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "A fully procedural, explorable cathedral of light built with Three.js",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
