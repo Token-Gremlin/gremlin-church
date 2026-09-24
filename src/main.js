@@ -381,15 +381,14 @@ class App {
       this.camera.updateProjectionMatrix();
     }
     // Re-aim without reloading: __view({ pos: [x,y,z], look: [yawDeg, pitchDeg] } | { tour: [chapter, t] }, frames)
+    // each view starts from the same hour and lens so results never depend on the previous view
+    const baseFov = this.camera.fov;
     window.__view = (v, frames = 3) => new Promise((resolve) => {
-      if (v.night !== undefined) this.world.setNight((this.night = this.nightTarget = v.night));
-      if (v.fov) {
-        this.camera.fov = v.fov;
-        this.camera.updateProjectionMatrix();
-      }
-      if (v.tour) {
-        const c = this.tour.chapters[v.tour[0]];
-        if (c.def.night !== undefined && v.night === undefined) this.world.setNight((this.night = this.nightTarget = c.def.night));
+      const c = v.tour ? this.tour.chapters[v.tour[0]] : null;
+      this.world.setNight((this.night = this.nightTarget = v.night ?? c?.def.night ?? 0));
+      this.camera.fov = v.fov || baseFov;
+      this.camera.updateProjectionMatrix();
+      if (c) {
         c.sample(v.tour[1] || 0, this.tour.eye, this.tour.target);
         this.mode = 'shot-tour';
         this.tour.apply(this.camera);
