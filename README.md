@@ -2,6 +2,8 @@
 
 **A fully procedural Gothic cathedral you can explore in your browser.**
 
+**[Explore the live demo](https://basilica-celestial-light-gremlin.tokengremlin.chatgpt.site)**
+
 Walk through the nave, climb the bell tower, visit the crypt and gardens, or let a guided tour take you through the basilica. The experience is built with Three.js: its architecture, stained glass, landscape, lighting, and soundscape are generated in code. The playable world uses no imported 3D models, image textures, or audio files.
 
 ![The basilica's twin towers and west entrance at dusk](assets/screenshots/exterior.png)
